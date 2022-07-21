@@ -1,0 +1,39 @@
+version: "3.2"
+
+services:
+
+  traefik:
+    image: "traefik:v2.8"
+    container_name: "traefik"
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  
+  whoami:
+    image: traefik/whoami
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+
+  helloworld:
+    image: helloworld
+    scale: 2
+    build:
+      context: ./app
+      dockerfile: ./Dockerfile
+    expose:
+      - 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.helloworld.rule=Host(`helloworld.localhost`) || Host(`localhost`)"
+      - "traefik.http.routers.helloworld.entrypoints=web"
+      - "traefik.http.routers.app_router.service=helloworld"
+      - "traefik.http.services.helloworld.loadbalancer.server.port=8000"

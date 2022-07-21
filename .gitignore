@@ -1,0 +1,4 @@
+nextcloud/data
+nextcloud/secrets/**/*.txt
+
+.vscode
