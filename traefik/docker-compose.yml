@@ -4,17 +4,19 @@ services:
 
   traefik:
     image: "traefik:v2.8"
-    container_name: "traefik"
     command:
-      #- "--log.level=DEBUG"
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+    #  - "--log.level=DEBUG"
     ports:
       - "80:80"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - traefik
+      - default
   
   whoami:
     image: traefik/whoami
@@ -37,3 +39,7 @@ services:
       - "traefik.http.routers.helloworld.entrypoints=web"
       - "traefik.http.routers.app_router.service=helloworld"
       - "traefik.http.services.helloworld.loadbalancer.server.port=8000"
+
+networks:
+  traefik:
+    name: traefik

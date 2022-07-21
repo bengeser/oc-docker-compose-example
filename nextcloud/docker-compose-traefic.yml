@@ -1,0 +1,84 @@
+# Basiert auf einem Beispiel von https://hub.docker.com/_/nextcloud
+version: '3.2'
+
+services:
+  db:
+    image: postgres:14 # Version 14 sollte alles haben was wir benötigen
+    restart: always # Wenn der container abstürzt sollte er immer neu gestartet werden
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data # Die Daten wollen wir in einem bind mount, damit ich sie leichter handlen kann
+    environment:
+      # umgebungsvariablen habe ich in docker secrets ausgelagert (siehe unten)
+      # diese werden als Dateien unter /run/secret bereitgestellt
+      # das Postgres image unterstützt das "_FILE"-pattern für bestimmte Umgebungsvariablen (POSTGRES_INITDB_ARGS, POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_DB)
+      - POSTGRES_DB_FILE=/run/secrets/postgres_db 
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      # Secrets müssen dem Container bekannt gemacht werden
+      - postgres_db
+      - postgres_password
+      - postgres_user
+
+  redis:
+    image: redis:alpine # jede Version scheint zu passen
+    restart: always
+
+  nextcloud:
+    image: nextcloud:22.2 # hier sind wir etwas spezifischer, wir wissen nicht, ob es zwischen den einzelnen Versionen Schema updates gibt
+    restart: always  # Wenn der container abstürzt sollte er immer neu gestartet werden
+    expose: 
+      - 80
+    volumes:
+      - ./data/nextcloud:/var/www/html # Die Daten will ich in einem bind mount, damit ich sie leichter handlen kann
+    environment:
+      # Auch hier Docker secrets. Der vorteil: Hier können wir die Postgres Nutzerdaten einfach wiederverwenden
+      - POSTGRES_HOST=db
+      - POSTGRES_DB_FILE=/run/secrets/postgres_db
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - NEXTCLOUD_ADMIN_PASSWORD_FILE=/run/secrets/nextcloud_admin_password
+      - NEXTCLOUD_ADMIN_USER_FILE=/run/secrets/nextcloud_admin_user
+      - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=nextcloud.localhost # UPDATED
+    depends_on:
+      - db # Abhängigkeit: die Datenbank muss verfügbar sein, bevor Nextcloud gestartet werden kann
+    secrets:
+      # Secrets müssen dem Container bekannt gemacht werden
+      - nextcloud_admin_password
+      - nextcloud_admin_user
+      - postgres_db
+      - postgres_password
+      - postgres_user
+    labels: # UPDATED
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.localhost`)"
+      - "traefik.http.routers.nextcloud.entrypoints=web"
+      - "traefik.docker.network=traefik"
+    networks: # UPDATED
+      - traefik
+      - default
+
+secrets:
+  # Secrets werden so aus einer Datei gelesen und als Datei in den container gemappt.
+  # der Mapping ort /run/secrets ist in Linux Standartsystemen auf einem im Arbeitsspeicher 
+  # eingerichteten Dateisystem
+  # Secrets werden explizit gelöscht, wenn der Container gestoppt wird  
+  nextcloud_admin_password:
+    file: ./secrets/nextcloud_admin_password.txt # In diese datei muss das Nextcloud Admin Passwort
+  nextcloud_admin_user:
+    file: ./secrets/nextcloud_admin_user.txt # In diese datei muss der Nextcloud Admin Benutzerame
+  postgres_db:
+    file: ./secrets/postgres_db.txt # In diese datei muss der Postgres Datenbankname
+  postgres_password:
+    file: ./secrets/postgres_password.txt # In diese datei muss das Postgres Datenbankpasswort
+  postgres_user:
+    file: ./secrets/postgres_user.txt # In diese datei muss der Postgres Datenbanknutzer
+
+volumes:
+  nextcloud:
+
+networks:
+  traefik:
+    name: traefik
+    external: true
