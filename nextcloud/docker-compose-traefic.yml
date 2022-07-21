@@ -54,7 +54,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.localhost`)"
       - "traefik.http.routers.nextcloud.entrypoints=web"
-      - "traefik.docker.network=traefik"
+      - "traefik.docker.network=traefik" # Besonderheit: Der Container muss traefic das gemeinsame Netzwerk mitteilen
     networks: # UPDATED
       - traefik
       - default

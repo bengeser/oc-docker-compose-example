@@ -40,6 +40,7 @@ services:
       - NEXTCLOUD_ADMIN_PASSWORD_FILE=/run/secrets/nextcloud_admin_password
       - NEXTCLOUD_ADMIN_USER_FILE=/run/secrets/nextcloud_admin_user
       - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=nextcloud.localhost # Für später
     depends_on:
       - db # Abhängigkeit: die Datenbank muss verfügbar sein, bevor Nextcloud gestartet werden kann
     secrets:
